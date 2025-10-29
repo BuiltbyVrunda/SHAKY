@@ -29,24 +29,21 @@
   <script src="shake.js"></script>
 
   <script>
-    async function requestMotionPermission() {
-      try {
-        // iOS needs explicit user permission
-        if (typeof DeviceMotionEvent.requestPermission === "function") {
-          const response = await DeviceMotionEvent.requestPermission();
-          if (response !== "granted") {
-            document.getElementById("status").innerText =
-              "⚠️ Please allow motion access for shake detection to work.";
-            return;
-          }
-        }
-        startShakeDetection();
-      } catch (err) {
-        console.error("Permission error:", err);
-        document.getElementById("status").innerText =
-          "⚠️ Motion access denied or not supported.";
-      }
-    }
+    async function sendShakeToBackend(intensity) {
+  try {
+    await fetch("http://localhost:3000/shake", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        time: new Date().toISOString(),
+        intensity: intensity.toFixed(2),
+      }),
+    });
+    console.log("Shake event sent to backend successfully");
+  } catch (err) {
+    console.error("Error sending to backend:", err);
+  }
+}
 
     function startShakeDetection() {
       document.getElementById("status").innerText =
@@ -92,3 +89,4 @@
   </script>
 </body>
 </html>
+
