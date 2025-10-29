@@ -1,117 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shake Detection Demo</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SHAKY — Real Shake Detection</title>
   <style>
     body {
-      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
       text-align: center;
-      background: #f8fafc;
-      color: #222;
-      padding-top: 100px;
-      transition: background 0.3s ease;
+      background: linear-gradient(135deg, #c9d6ff, #e2e2e2);
+      transition: background 0.4s ease;
     }
+
     h1 {
-      font-size: 28px;
-      margin-bottom: 10px;
-    }
-    p {
-      color: #555;
+      font-size: 2rem;
       margin-bottom: 20px;
     }
+
     button {
-      background: #007bff;
+      background-color: #4caf50;
       color: white;
       border: none;
-      padding: 12px 20px;
-      border-radius: 10px;
-      font-size: 16px;
+      padding: 12px 25px;
+      border-radius: 8px;
       cursor: pointer;
-      transition: background 0.3s ease;
-      margin: 10px;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s ease, background 0.3s ease;
     }
+
     button:hover {
-      background: #0056b3;
+      background-color: #45a049;
+      transform: scale(1.05);
     }
+
     #status {
       margin-top: 20px;
+      font-size: 1.2rem;
+      color: #333;
+    }
+
+    #intensity {
+      font-size: 1.4rem;
+      color: #16a34a;
       font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <h1>📱 Shake Detection Demo</h1>
-  <p>Click below to enable motion access, then shake your phone!</p>
-  <button id="enableBtn">Enable Motion Access</button>
-  <button id="downloadBtn" style="display:none;">Download Shake Data</button>
-  <p id="status">Waiting for permission...</p>
+  <h1>📱 Shaky Motion Detector</h1>
+  <button id="enableBtn">Enable Shake Detection</button>
+  <div id="status">Waiting for permission...</div>
+  <div id="intensity"></div>
 
-  <script src="shake.js"></script>
   <script>
-    const shakeData = [];
-    const myShake = new Shake({ threshold: 12, timeout: 400 });
-    let motionEnabled = false;
+    let shakeData = [];
 
-    document.getElementById('enableBtn').addEventListener('click', async () => {
-      if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        // iOS requires user gesture
+    async function requestMotionPermission() {
+      const statusText = document.getElementById("status");
+
+      // iOS Safari requires explicit permission
+      if (typeof DeviceMotionEvent.requestPermission === "function") {
         try {
           const response = await DeviceMotionEvent.requestPermission();
-          if (response === 'granted') {
+          if (response === "granted") {
             startShakeDetection();
+            statusText.textContent = "Permission granted ✅ Shake your phone!";
           } else {
-            document.getElementById("status").textContent = "❌ Motion access denied.";
+            alert("Permission denied! Please allow motion access.");
+            statusText.textContent = "Permission denied ❌";
           }
-        } catch (err) {
-          document.getElementById("status").textContent = "⚠️ Error requesting permission.";
-          console.error(err);
+        } catch (error) {
+          alert("Error requesting permission: " + error);
+          statusText.textContent = "Error requesting permission ❌";
         }
       } else {
-        // Android Chrome usually works without permission request
+        // Android or other browsers
         startShakeDetection();
+        statusText.textContent = "Shake detection started ✅";
       }
-    });
-
-    function startShakeDetection() {
-      motionEnabled = true;
-      myShake.start();
-      document.getElementById("status").textContent = "✅ Motion access granted! Shake your phone now.";
-      document.getElementById("enableBtn").style.display = "none";
-      document.getElementById("downloadBtn").style.display = "inline-block";
     }
 
-    // Handle shake event
-    window.addEventListener('shake', (e) => {
-      // You can measure intensity using acceleration
-      const acc = e.accelerationIncludingGravity || {x:0, y:0, z:0};
-      const intensity = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-      document.body.style.background = "#caffbf";
-      setTimeout(() => document.body.style.background = "#f8fafc", 300);
-      document.getElementById("status").textContent = `💥 Shake detected! Intensity: ${intensity.toFixed(2)}`;
-      
-      shakeData.push({
-        time: new Date().toISOString(),
-        intensity: intensity.toFixed(2)
+    function startShakeDetection() {
+      const intensityDisplay = document.getElementById("intensity");
+
+      window.addEventListener("devicemotion", (e) => {
+        const acc = e.accelerationIncludingGravity || e.acceleration;
+        if (!acc) return;
+
+        const x = acc.x || 0;
+        const y = acc.y || 0;
+        const z = acc.z || 0;
+        const intensity = Math.sqrt(x * x + y * y + z * z).toFixed(2);
+
+        // Record shake data with timestamp
+        const timestamp = new Date().toISOString();
+        shakeData.push({ time: timestamp, intensity: intensity });
+
+        if (intensity > 12) {
+          console.log("💥 Shake detected! Intensity:", intensity);
+          intensityDisplay.textContent = "💥 Intensity: " + intensity;
+          document.body.style.background = "radial-gradient(circle, #b8ffb5, #e2e2e2)";
+          setTimeout(() => {
+            document.body.style.background = "linear-gradient(135deg, #c9d6ff, #e2e2e2)";
+          }, 700);
+        }
       });
+    }
 
-      console.log("Shake detected:", intensity.toFixed(2));
-    });
-
-    // Download shake data
-    document.getElementById('downloadBtn').addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(shakeData, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "shake_data.json";
-      a.click();
-      URL.revokeObjectURL(url);
-    });
-    <script src="shake.js"></script>
+    // Button click starts permission flow
+    document.getElementById("enableBtn").addEventListener("click", requestMotionPermission);
   </script>
-  
 </body>
 </html>
-
