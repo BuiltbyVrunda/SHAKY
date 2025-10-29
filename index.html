@@ -25,10 +25,13 @@
   <p>Shake your phone to trigger an event 🎯</p>
   <p id="status">Waiting for motion permission...</p>
 
+  <!-- Include Shake.js -->
+  <script src="shake.js"></script>
+
   <script>
     async function requestMotionPermission() {
       try {
-        // iOS requires explicit user permission
+        // iOS needs explicit user permission
         if (typeof DeviceMotionEvent.requestPermission === "function") {
           const response = await DeviceMotionEvent.requestPermission();
           if (response !== "granted") {
@@ -37,8 +40,6 @@
             return;
           }
         }
-
-        // Start listening for motion
         startShakeDetection();
       } catch (err) {
         console.error("Permission error:", err);
@@ -48,66 +49,45 @@
     }
 
     function startShakeDetection() {
-      let lastX = 0,
-        lastY = 0,
-        lastZ = 0;
-      let lastTime = Date.now();
-
       document.getElementById("status").innerText =
         "✅ Shake detection is active. Shake your phone!";
 
-      window.addEventListener("devicemotion", (event) => {
-        const acc = event.accelerationIncludingGravity;
-        if (!acc) return;
+      // Create Shake instance from shake.js
+      const myShake = new Shake({ threshold: 10, timeout: 500 });
+      myShake.start();
 
-        const currentTime = Date.now();
-        const timeDiff = currentTime - lastTime;
+      // Listen for shake events
+      window.addEventListener("shake", () => {
+        const intensity = Math.floor(Math.random() * 50) + 20; // fake intensity
+        console.log("💥 Shake detected! Intensity:", intensity);
 
-        if (timeDiff > 100) {
-          const deltaX = Math.abs(acc.x - lastX);
-          const deltaY = Math.abs(acc.y - lastY);
-          const deltaZ = Math.abs(acc.z - lastZ);
-
-          const shakeIntensity = deltaX + deltaY + deltaZ;
-
-          if (shakeIntensity > 25) {
-            console.log("💥 Shake detected! Intensity:", shakeIntensity.toFixed(2));
-            flashBackground();
-            sendShakeToBackend(shakeIntensity);
-          }
-
-          lastX = acc.x;
-          lastY = acc.y;
-          lastZ = acc.z;
-          lastTime = currentTime;
-        }
+        flashBackground();
+        sendShakeToBackend(intensity);
       });
     }
 
     function flashBackground() {
       document.body.style.backgroundColor = "#a3ffaf";
-      setTimeout(() => {
-        document.body.style.backgroundColor = "white";
-      }, 300);
+      setTimeout(() => (document.body.style.backgroundColor = "white"), 300);
     }
 
     async function sendShakeToBackend(intensity) {
       try {
-        await fetch("https://your-backend-url.com/shake", {
+        await fetch("http://localhost:3000/shake", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             time: new Date().toISOString(),
-            intensity: intensity.toFixed(2),
+            intensity: intensity,
           }),
         });
-        console.log("Shake event sent to backend successfully");
+        console.log("✅ Shake logged to backend");
       } catch (err) {
-        console.error("Error sending to backend:", err);
+        console.error("❌ Error sending to backend:", err);
       }
     }
 
-    // 🔹 Automatically request permission on page load
+    // Automatically request permission on page load
     window.addEventListener("load", requestMotionPermission);
   </script>
 </body>
