@@ -3,119 +3,112 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SHAKY — Real Shake Detection</title>
+  <title>Shake Detection Feature</title>
   <style>
     body {
-      margin: 0;
-      font-family: "Poppins", sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
       text-align: center;
-      background: linear-gradient(135deg, #c9d6ff, #e2e2e2);
-      transition: background 0.4s ease;
+      font-family: Arial, sans-serif;
+      margin-top: 50px;
+      transition: background-color 0.3s ease;
     }
-
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 20px;
-    }
-
-    button {
-      background-color: #4caf50;
-      color: white;
-      border: none;
-      padding: 12px 25px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1.1rem;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-      transition: transform 0.2s ease, background 0.3s ease;
-    }
-
-    button:hover {
-      background-color: #45a049;
-      transform: scale(1.05);
-    }
-
-    #status {
-      margin-top: 20px;
-      font-size: 1.2rem;
+    h2 {
       color: #333;
     }
-
-    #intensity {
-      font-size: 1.4rem;
-      color: #16a34a;
-      font-weight: bold;
+    #status {
+      margin-top: 20px;
+      color: #555;
     }
   </style>
 </head>
 <body>
-  <h1>📱 Shaky Motion Detector</h1>
-  <button id="enableBtn">Enable Shake Detection</button>
-  <div id="status">Waiting for permission...</div>
-  <div id="intensity"></div>
+  <h2>Shake Detection Active 📱</h2>
+  <p>Shake your phone to trigger an event 🎯</p>
+  <p id="status">Waiting for motion permission...</p>
 
   <script>
-    let shakeData = [];
-
     async function requestMotionPermission() {
-      const statusText = document.getElementById("status");
-
-      // iOS Safari requires explicit permission
-      if (typeof DeviceMotionEvent.requestPermission === "function") {
-        try {
+      try {
+        // iOS requires explicit user permission
+        if (typeof DeviceMotionEvent.requestPermission === "function") {
           const response = await DeviceMotionEvent.requestPermission();
-          if (response === "granted") {
-            startShakeDetection();
-            statusText.textContent = "Permission granted ✅ Shake your phone!";
-          } else {
-            alert("Permission denied! Please allow motion access.");
-            statusText.textContent = "Permission denied ❌";
+          if (response !== "granted") {
+            document.getElementById("status").innerText =
+              "⚠️ Please allow motion access for shake detection to work.";
+            return;
           }
-        } catch (error) {
-          alert("Error requesting permission: " + error);
-          statusText.textContent = "Error requesting permission ❌";
         }
-      } else {
-        // Android or other browsers
+
+        // Start listening for motion
         startShakeDetection();
-        statusText.textContent = "Shake detection started ✅";
+      } catch (err) {
+        console.error("Permission error:", err);
+        document.getElementById("status").innerText =
+          "⚠️ Motion access denied or not supported.";
       }
     }
 
     function startShakeDetection() {
-      const intensityDisplay = document.getElementById("intensity");
+      let lastX = 0,
+        lastY = 0,
+        lastZ = 0;
+      let lastTime = Date.now();
 
-      window.addEventListener("devicemotion", (e) => {
-        const acc = e.accelerationIncludingGravity || e.acceleration;
+      document.getElementById("status").innerText =
+        "✅ Shake detection is active. Shake your phone!";
+
+      window.addEventListener("devicemotion", (event) => {
+        const acc = event.accelerationIncludingGravity;
         if (!acc) return;
 
-        const x = acc.x || 0;
-        const y = acc.y || 0;
-        const z = acc.z || 0;
-        const intensity = Math.sqrt(x * x + y * y + z * z).toFixed(2);
+        const currentTime = Date.now();
+        const timeDiff = currentTime - lastTime;
 
-        // Record shake data with timestamp
-        const timestamp = new Date().toISOString();
-        shakeData.push({ time: timestamp, intensity: intensity });
+        if (timeDiff > 100) {
+          const deltaX = Math.abs(acc.x - lastX);
+          const deltaY = Math.abs(acc.y - lastY);
+          const deltaZ = Math.abs(acc.z - lastZ);
 
-        if (intensity > 12) {
-          console.log("💥 Shake detected! Intensity:", intensity);
-          intensityDisplay.textContent = "💥 Intensity: " + intensity;
-          document.body.style.background = "radial-gradient(circle, #b8ffb5, #e2e2e2)";
-          setTimeout(() => {
-            document.body.style.background = "linear-gradient(135deg, #c9d6ff, #e2e2e2)";
-          }, 700);
+          const shakeIntensity = deltaX + deltaY + deltaZ;
+
+          if (shakeIntensity > 25) {
+            console.log("💥 Shake detected! Intensity:", shakeIntensity.toFixed(2));
+            flashBackground();
+            sendShakeToBackend(shakeIntensity);
+          }
+
+          lastX = acc.x;
+          lastY = acc.y;
+          lastZ = acc.z;
+          lastTime = currentTime;
         }
       });
     }
 
-    // Button click starts permission flow
-    document.getElementById("enableBtn").addEventListener("click", requestMotionPermission);
+    function flashBackground() {
+      document.body.style.backgroundColor = "#a3ffaf";
+      setTimeout(() => {
+        document.body.style.backgroundColor = "white";
+      }, 300);
+    }
+
+    async function sendShakeToBackend(intensity) {
+      try {
+        await fetch("https://your-backend-url.com/shake", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            time: new Date().toISOString(),
+            intensity: intensity.toFixed(2),
+          }),
+        });
+        console.log("Shake event sent to backend successfully");
+      } catch (err) {
+        console.error("Error sending to backend:", err);
+      }
+    }
+
+    // 🔹 Automatically request permission on page load
+    window.addEventListener("load", requestMotionPermission);
   </script>
 </body>
 </html>
