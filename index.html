@@ -17,6 +17,13 @@
     #status {
       margin-top: 20px;
       color: #555;
+      font-size: 1rem;
+    }
+    #intensityDisplay {
+      margin-top: 30px;
+      font-size: 2rem;
+      font-weight: bold;
+      color: #0078ff;
     }
   </style>
 </head>
@@ -24,48 +31,70 @@
   <h2>Shake Detection Active 📱</h2>
   <p>Shake your phone to trigger an event 🎯</p>
   <p id="status">Waiting for motion permission...</p>
-
-  <!-- Include Shake.js -->
-  <script src="shake.js"></script>
+  <div id="intensityDisplay">Shake Intensity: 0</div>
 
   <script>
-    async function sendShakeToBackend(intensity) {
-  try {
-    await fetch("http://localhost:3000/shake", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        time: new Date().toISOString(),
-        intensity: intensity.toFixed(2),
-      }),
-    });
-    console.log("Shake event sent to backend successfully");
-  } catch (err) {
-    console.error("Error sending to backend:", err);
-  }
-}
+    async function requestMotionPermission() {
+      try {
+        if (typeof DeviceMotionEvent.requestPermission === "function") {
+          const response = await DeviceMotionEvent.requestPermission();
+          if (response !== "granted") {
+            document.getElementById("status").innerText =
+              "⚠️ Please allow motion access for shake detection to work.";
+            return;
+          }
+        }
+        startShakeDetection();
+      } catch (err) {
+        console.error("Permission error:", err);
+        document.getElementById("status").innerText =
+          "⚠️ Motion access denied or not supported.";
+      }
+    }
 
     function startShakeDetection() {
+      let lastX = 0, lastY = 0, lastZ = 0;
+      let lastTime = Date.now();
+      const intensityDisplay = document.getElementById("intensityDisplay");
+
       document.getElementById("status").innerText =
         "✅ Shake detection is active. Shake your phone!";
 
-      // Create Shake instance from shake.js
-      const myShake = new Shake({ threshold: 10, timeout: 500 });
-      myShake.start();
+      window.addEventListener("devicemotion", (event) => {
+        const acc = event.accelerationIncludingGravity;
+        if (!acc) return;
 
-      // Listen for shake events
-      window.addEventListener("shake", () => {
-        const intensity = Math.floor(Math.random() * 50) + 20; // fake intensity
-        console.log("💥 Shake detected! Intensity:", intensity);
+        const currentTime = Date.now();
+        const timeDiff = currentTime - lastTime;
 
-        flashBackground();
-        sendShakeToBackend(intensity);
+        if (timeDiff > 100) {
+          const deltaX = Math.abs(acc.x - lastX);
+          const deltaY = Math.abs(acc.y - lastY);
+          const deltaZ = Math.abs(acc.z - lastZ);
+          const shakeIntensity = deltaX + deltaY + deltaZ;
+
+          // 🔹 Show intensity live on screen
+          intensityDisplay.textContent = `Shake Intensity: ${shakeIntensity.toFixed(2)}`;
+
+          if (shakeIntensity > 25) {
+            console.log("💥 Shake detected! Intensity:", shakeIntensity.toFixed(2));
+            flashBackground();
+            sendShakeToBackend(shakeIntensity);
+          }
+
+          lastX = acc.x;
+          lastY = acc.y;
+          lastZ = acc.z;
+          lastTime = currentTime;
+        }
       });
     }
 
     function flashBackground() {
       document.body.style.backgroundColor = "#a3ffaf";
-      setTimeout(() => (document.body.style.backgroundColor = "white"), 300);
+      setTimeout(() => {
+        document.body.style.backgroundColor = "white";
+      }, 300);
     }
 
     async function sendShakeToBackend(intensity) {
@@ -75,18 +104,17 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             time: new Date().toISOString(),
-            intensity: intensity,
+            intensity: intensity.toFixed(2),
           }),
         });
-        console.log("✅ Shake logged to backend");
+        console.log("Shake event sent to backend successfully");
       } catch (err) {
-        console.error("❌ Error sending to backend:", err);
+        console.error("Error sending to backend:", err);
       }
     }
 
-    // Automatically request permission on page load
+    // 🔹 Automatically request permission on page load
     window.addEventListener("load", requestMotionPermission);
   </script>
 </body>
 </html>
-
