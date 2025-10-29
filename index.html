@@ -25,17 +25,34 @@
       font-weight: bold;
       color: #0078ff;
     }
+    #enableBtn {
+      margin-top: 25px;
+      padding: 12px 25px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background-color: #0078ff;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    #enableBtn:hover {
+      background-color: #005fcc;
+    }
   </style>
 </head>
 <body>
   <h2>Shake Detection Active 📱</h2>
   <p>Shake your phone to trigger an event 🎯</p>
+
+  <button id="enableBtn">Enable Motion Sensors</button>
   <p id="status">Waiting for motion permission...</p>
   <div id="intensityDisplay">Shake Intensity: 0</div>
 
   <script>
     async function requestMotionPermission() {
       try {
+        // iOS Safari requires user gesture to grant permission
         if (typeof DeviceMotionEvent.requestPermission === "function") {
           const response = await DeviceMotionEvent.requestPermission();
           if (response !== "granted") {
@@ -44,6 +61,7 @@
             return;
           }
         }
+        // Start motion detection after permission
         startShakeDetection();
       } catch (err) {
         console.error("Permission error:", err);
@@ -53,7 +71,9 @@
     }
 
     function startShakeDetection() {
-      let lastX = 0, lastY = 0, lastZ = 0;
+      let lastX = 0,
+        lastY = 0,
+        lastZ = 0;
       let lastTime = Date.now();
       const intensityDisplay = document.getElementById("intensityDisplay");
 
@@ -113,8 +133,8 @@
       }
     }
 
-    // 🔹 Automatically request permission on page load
-    window.addEventListener("load", requestMotionPermission);
+    // 🔹 User clicks button to start detection
+    document.getElementById("enableBtn").addEventListener("click", requestMotionPermission);
   </script>
 </body>
 </html>
