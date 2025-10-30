@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shake SOS WhatsApp</title>
-  <script type="module" defer src="shake.js"></script>
-  <script type="module" defer src="sos.js"></script>
+  <title>Emergency SOS System</title>
   <style>
     * {
       margin: 0;
@@ -65,7 +63,7 @@
     .btn-success:hover {
       background: #37b24d;
     }
-    input {
+    input, textarea {
       width: 100%;
       padding: 12px;
       border-radius: 8px;
@@ -74,9 +72,14 @@
       color: white;
       font-size: 14px;
       margin-bottom: 10px;
+      font-family: inherit;
     }
-    input::placeholder {
+    input::placeholder, textarea::placeholder {
       color: rgba(255, 255, 255, 0.5);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
     }
     #status {
       text-align: center;
@@ -175,23 +178,39 @@
     .hidden {
       display: none;
     }
+    .profile-status {
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 13px;
+      margin-top: 12px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🚨 WhatsApp SOS System</h1>
+    <h1>🚨 Emergency SOS System</h1>
     
     <div class="card">
+      <h2 style="margin-bottom: 15px; font-size: 20px;">👤 Your Profile</h2>
+      <input type="text" id="userName" placeholder="Your Full Name*">
+      <input type="text" id="userBloodType" placeholder="Blood Type (Optional)">
+      <textarea id="userMedicalInfo" placeholder="Medical conditions, allergies... (Optional)"></textarea>
+      <button id="saveProfile" class="btn-success">Save Profile</button>
+      <div class="profile-status" id="profileStatus">⚠️ Profile not configured</div>
+    </div>
+
+    <div class="card">
       <h2 style="margin-bottom: 15px; font-size: 20px;">📱 Motion Detection</h2>
-      <button id="enableMotion" class="btn-success">Enable Shake Detection</button>
       <button id="sendSOS">Send SOS Manually</button>
-      <div id="status">Waiting for motion access...</div>
+      <div id="status">🔄 Initializing shake detection...</div>
     </div>
 
     <div class="card">
       <h2 style="margin-bottom: 15px; font-size: 20px;">👥 Emergency Contacts</h2>
       <input type="text" id="contactName" placeholder="Contact Name (e.g., Mom, Dad)">
-      <input type="tel" id="contactPhone" placeholder="Phone Number (with country code: +919876543210)">
+      <input type="tel" id="contactPhone" placeholder="Phone Number (+919876543210)">
       <button id="addContact" class="btn-success">Add Contact</button>
       <div class="contacts-list" id="contactsList"></div>
     </div>
@@ -205,5 +224,8 @@
       <button class="btn-cancel" id="cancelSOS">CANCEL SOS</button>
     </div>
   </div>
+
+  <script type="module" src="./shake.js"></script>
+  <script type="module" src="./sos.js"></script>
 </body>
 </html>
