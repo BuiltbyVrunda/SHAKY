@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Shake Detection Feature</title>
+  <title>Shake Detection & Auto SOS</title>
   <style>
     body {
       text-align: center;
@@ -11,130 +11,207 @@
       margin-top: 50px;
       transition: background-color 0.3s ease;
     }
-    h2 {
-      color: #333;
-    }
-    #status {
-      margin-top: 20px;
-      color: #555;
-      font-size: 1rem;
-    }
+    h2 { color: #333; }
+    #status { margin-top: 15px; color: #555; }
     #intensityDisplay {
-      margin-top: 30px;
-      font-size: 2rem;
-      font-weight: bold;
+      margin-top: 20px;
+      font-size: 1.5rem;
       color: #0078ff;
     }
     #enableBtn {
-      margin-top: 25px;
-      padding: 12px 25px;
+      margin-top: 20px;
+      padding: 10px 20px;
       font-size: 1rem;
       border: none;
       border-radius: 8px;
       background-color: #0078ff;
       color: white;
       cursor: pointer;
-      transition: background-color 0.2s ease;
     }
-    #enableBtn:hover {
-      background-color: #005fcc;
+    #sosBtn {
+      position: fixed;
+      bottom: 40px;
+      right: 40px;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background-color: red;
+      color: white;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
+
+    /* Popup styling */
+    #disclaimer {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      display: none;
+      z-index: 1000;
+    }
+    #disclaimer h3 {
+      margin-bottom: 10px;
+      color: #e63946;
+    }
+    #disclaimer button {
+      padding: 10px 15px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    #cancelBtn { background-color: #ccc; }
+    #confirmBtn { background-color: red; color: white; }
   </style>
 </head>
 <body>
   <h2>Shake Detection Active 📱</h2>
-  <p>Shake your phone to trigger an event 🎯</p>
+  <p>Shake your phone or tap SOS if in emergency 🚨</p>
 
   <button id="enableBtn">Enable Motion Sensors</button>
   <p id="status">Waiting for motion permission...</p>
   <div id="intensityDisplay">Shake Intensity: 0</div>
 
+  <button id="sosBtn">SOS</button>
+
+  <!-- ⚠️ Disclaimer Popup -->
+  <div id="disclaimer">
+    <h3>Shake Detected!</h3>
+    <p>SOS will be sent in <span id="countdown">3</span> seconds...</p>
+    <button id="cancelBtn">Cancel</button>
+    <button id="confirmBtn">Send SOS Now</button>
+  </div>
+
   <script>
+    let countdownInterval;
+    let permissionGranted = false;
+
     async function requestMotionPermission() {
-      try {
-        // iOS Safari requires user gesture to grant permission
-        if (typeof DeviceMotionEvent.requestPermission === "function") {
-          const response = await DeviceMotionEvent.requestPermission();
-          if (response !== "granted") {
-            document.getElementById("status").innerText =
-              "⚠️ Please allow motion access for shake detection to work.";
-            return;
-          }
+      if (typeof DeviceMotionEvent.requestPermission === "function") {
+        const response = await DeviceMotionEvent.requestPermission();
+        if (response === "granted") {
+          permissionGranted = true;
+          startShakeDetection();
+        } else {
+          alert("Please allow motion access for shake detection to work.");
         }
-        // Start motion detection after permission
+      } else {
+        permissionGranted = true;
         startShakeDetection();
-      } catch (err) {
-        console.error("Permission error:", err);
-        document.getElementById("status").innerText =
-          "⚠️ Motion access denied or not supported.";
       }
     }
 
     function startShakeDetection() {
-      let lastX = 0,
-        lastY = 0,
-        lastZ = 0;
+      let lastX = 0, lastY = 0, lastZ = 0;
       let lastTime = Date.now();
-      const intensityDisplay = document.getElementById("intensityDisplay");
-
-      document.getElementById("status").innerText =
-        "✅ Shake detection is active. Shake your phone!";
+      const display = document.getElementById("intensityDisplay");
 
       window.addEventListener("devicemotion", (event) => {
         const acc = event.accelerationIncludingGravity;
         if (!acc) return;
+        const now = Date.now();
+        const diff = now - lastTime;
 
-        const currentTime = Date.now();
-        const timeDiff = currentTime - lastTime;
-
-        if (timeDiff > 100) {
+        if (diff > 100) {
           const deltaX = Math.abs(acc.x - lastX);
           const deltaY = Math.abs(acc.y - lastY);
           const deltaZ = Math.abs(acc.z - lastZ);
-          const shakeIntensity = deltaX + deltaY + deltaZ;
+          const intensity = deltaX + deltaY + deltaZ;
+          display.textContent = `Shake Intensity: ${intensity.toFixed(2)}`;
 
-          // 🔹 Show intensity live on screen
-          intensityDisplay.textContent = `Shake Intensity: ${shakeIntensity.toFixed(2)}`;
+          if (intensity > 25) showDisclaimer(intensity);
 
-          if (shakeIntensity > 25) {
-            console.log("💥 Shake detected! Intensity:", shakeIntensity.toFixed(2));
-            flashBackground();
-            sendShakeToBackend(shakeIntensity);
-          }
-
-          lastX = acc.x;
-          lastY = acc.y;
-          lastZ = acc.z;
-          lastTime = currentTime;
+          lastX = acc.x; lastY = acc.y; lastZ = acc.z;
+          lastTime = now;
         }
       });
     }
 
-    function flashBackground() {
-      document.body.style.backgroundColor = "#a3ffaf";
-      setTimeout(() => {
-        document.body.style.backgroundColor = "white";
-      }, 300);
+    function showDisclaimer(intensity) {
+      const popup = document.getElementById("disclaimer");
+      const countdownDisplay = document.getElementById("countdown");
+      popup.style.display = "block";
+      let countdown = 3;
+      countdownDisplay.textContent = countdown;
+
+      countdownInterval = setInterval(() => {
+        countdown--;
+        countdownDisplay.textContent = countdown;
+        if (countdown <= 0) {
+          clearInterval(countdownInterval);
+          popup.style.display = "none";
+          sendSOS(true, intensity);
+        }
+      }, 1000);
+
+      document.getElementById("cancelBtn").onclick = () => {
+        clearInterval(countdownInterval);
+        popup.style.display = "none";
+      };
+      document.getElementById("confirmBtn").onclick = () => {
+        clearInterval(countdownInterval);
+        popup.style.display = "none";
+        sendSOS(true, intensity);
+      };
     }
 
-    async function sendShakeToBackend(intensity) {
+    async function sendSOS(auto = false, intensity = null) {
+      const locationData = await getLocation();
       try {
-        await fetch("http://localhost:3000/shake", {
+        await fetch("http://localhost:3000/sos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             time: new Date().toISOString(),
-            intensity: intensity.toFixed(2),
+            triggeredBy: auto ? "Shake" : "Manual",
+            intensity,
+            location: locationData,
           }),
         });
-        console.log("Shake event sent to backend successfully");
+        alert("🚨 SOS Sent!");
+        startLiveLocation();
       } catch (err) {
-        console.error("Error sending to backend:", err);
+        console.error("SOS error:", err);
       }
     }
 
-    // 🔹 User clicks button to start detection
+    async function getLocation() {
+      return new Promise((resolve) => {
+        if (!navigator.geolocation) return resolve({});
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+          }),
+          () => resolve({})
+        );
+      });
+    }
+
+    function startLiveLocation() {
+      setInterval(async () => {
+        const location = await getLocation();
+        fetch("http://localhost:3000/sos-live", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            time: new Date().toISOString(),
+            location,
+          }),
+        });
+      }, 5000); // every 5 seconds
+    }
+
     document.getElementById("enableBtn").addEventListener("click", requestMotionPermission);
+    document.getElementById("sosBtn").addEventListener("click", () => sendSOS(false));
   </script>
 </body>
 </html>
