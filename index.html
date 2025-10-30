@@ -164,26 +164,28 @@
     }
 
     async function sendSOS(auto = false, intensity = null) {
-      const locationData = await getLocation();
-      try {
-        await fetch("http://localhost:3000/sos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            time: new Date().toISOString(),
-            triggeredBy: auto ? "Shake" : "Manual",
-            intensity,
-            location: locationData,
-          }),
-        });
-        alert("🚨 SOS Sent!");
-        startLiveLocation();
-      } catch (err) {
-        console.error("SOS error:", err);
-      }
-    }
+  const locationData = await getLocation();
+  const sosData = {
+    user: "Vrunda", // You can dynamically get this from login info
+    time: new Date().toISOString(),
+    triggeredBy: auto ? "Shake" : "Manual",
+    intensity,
+    location: locationData,
+  };
 
-    async function getLocation() {
+  try {
+    await fetch("http://localhost:3000/sos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sosData),
+    });
+    alert("🚨 SOS Sent to your emergency contacts!");
+    startLiveLocation();
+  } catch (err) {
+    console.error("SOS error:", err);
+  }
+}
+c function getLocation() {
       return new Promise((resolve) => {
         if (!navigator.geolocation) return resolve({});
         navigator.geolocation.getCurrentPosition(
@@ -215,3 +217,4 @@
   </script>
 </body>
 </html>
+
