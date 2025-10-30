@@ -1,30 +1,22 @@
 import express from "express";
 import fs from "fs";
+import path from "path";
 import cors from "cors";
-import twilio from "twilio"; // SMS service
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
+const PORT = 3000;
+
 app.use(cors());
 app.use(express.json());
+app.use(express.static(__dirname)); // serves index.html, shake.js, sos.js
 
-const sosFile = "sos_log.json";
+const sosFile = path.join(__dirname, "sos_log.json");
 
-// ✅ Add your Twilio credentials here
-const accountSid = "YOUR_TWILIO_ACCOUNT_SID";
-const authToken = "YOUR_TWILIO_AUTH_TOKEN";
-const twilioClient = twilio(accountSid, authToken);
-
-// Your Twilio phone number
-const twilioNumber = "+1234567890";
-
-// Emergency contacts (you can later store this in a DB)
-const emergencyContacts = [
-  { name: "Mom", phone: "+91XXXXXXXXXX" },
-  { name: "Dad", phone: "+91YYYYYYYYYY" },
-  { name: "Friend", phone: "+91ZZZZZZZZZZ" },
-];
-
-// Helper function to log data
+// ✅ Helper function to save SOS logs
 function saveData(filename, data) {
   const existing = fs.existsSync(filename)
     ? JSON.parse(fs.readFileSync(filename, "utf8"))
@@ -33,53 +25,31 @@ function saveData(filename, data) {
   fs.writeFileSync(filename, JSON.stringify(existing, null, 2));
 }
 
-// ✅ SOS route
-app.post("/sos", async (req, res) => {
-  const { user, time, triggeredBy, intensity, location } = req.body;
+// ✅ Endpoint to receive SOS alerts
+app.post("/sos", (req, res) => {
+  const { user, time, intensity, location } = req.body;
+
   const sosDetails = {
-    user,
-    time,
-    triggeredBy,
-    intensity,
-    location,
-    type: "SOS_TRIGGER",
+    user: user || "Anonymous",
+    time: time || new Date().toISOString(),
+    intensity: intensity || "N/A",
+    location: location || "Unknown",
   };
 
   saveData(sosFile, sosDetails);
-  console.log("🚨 SOS logged:", sosDetails);
+  console.log("🚨 SOS Logged:", sosDetails);
 
-  const messageText = `
-🚨 SOS Alert!
-User: ${user}
-Trigger: ${triggeredBy}
-Time: ${new Date(time).toLocaleString()}
-${intensity ? `Shake Intensity: ${intensity}\n` : ""}
-Location: https://www.google.com/maps?q=${location.latitude},${location.longitude}
-`;
+  res.json({ status: "SOS data logged successfully" });
+});
 
-  // ✅ Send SMS to all emergency contacts
-  for (const contact of emergencyContacts) {
-    try {
-      await twilioClient.messages.create({
-        body: messageText,
-        from: twilioNumber,
-        to: contact.phone,
-      });
-      console.log(`📩 SOS sent to ${contact.name} (${contact.phone})`);
-    } catch (err) {
-      console.error(`❌ Failed to send to ${contact.name}:`, err.message);
-    }
+// ✅ Endpoint to download all SOS logs
+app.get("/download-sos", (req, res) => {
+  if (!fs.existsSync(sosFile)) {
+    return res.status(404).json({ error: "No SOS logs found" });
   }
-
-  res.json({ status: "SOS sent to emergency contacts" });
+  res.download(sosFile, "sos_log.json");
 });
 
-// ✅ Route to log live location updates
-app.post("/sos-live", (req, res) => {
-  const data = { ...req.body, type: "LIVE_UPDATE" };
-  saveData(sosFile, data);
-  console.log("📍 Live location:", data.location);
-  res.json({ status: "Live location logged" });
+app.listen(PORT, () => {
+  console.log(`✅ Server running at http://localhost:${PORT}`);
 });
-
-app.listen(3000, () => console.log("✅ Server running on http://localhost:3000"));
