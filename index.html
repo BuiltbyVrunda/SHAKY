@@ -1,45 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Shake + SOS Feature</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SOS Shake Detection</title>
   <style>
     body {
+      font-family: Arial, sans-serif;
       text-align: center;
-      font-family: sans-serif;
-      margin-top: 50px;
-      transition: background-color 0.5s ease;
+      padding: 40px;
     }
     #sosButton {
       display: none;
+      padding: 10px 20px;
       background-color: red;
       color: white;
       font-size: 18px;
-      padding: 10px 20px;
       border: none;
       border-radius: 10px;
-      margin-top: 20px;
       cursor: pointer;
     }
     #enableMotion {
-      background-color: #007bff;
+      padding: 10px 20px;
+      background-color: green;
       color: white;
-      font-size: 16px;
-      padding: 10px 15px;
+      font-size: 18px;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h2>Shake Detection + SOS</h2>
-  <p>Shake your phone to trigger an emergency alert ⚠️</p>
-  
-  <button id="enableMotion">Enable Motion Access</button>
-  <button id="sosButton">🚨 SOS Now</button>
+  <h1>🚨 Shake-to-SOS System</h1>
+  <button id="enableMotion">Enable Shake Detection</button>
+  <button id="sosButton">🚨 Cancel SOS</button>
 
-  <script src="shake.js"></script>
+  <script>
+    let permissionGranted = false;
+    let sosTimeout = null;
+    let emergencyNumber = "919361916131";
+    let userLocation = "Location not available";
+
+    async function requestMotionPermission() {
+      if (typeof DeviceMotionEvent.requestPermission === "function") {
+        const response = await DeviceMotionEvent.requestPermission();
+        if (response === "granted") {
+          permissionGranted = true;
+          startShakeDetection();
+        } else {
+          alert("Please allow motion access for this feature to work.");
+        }
+      } else {
+        permissionGranted = true;
+        startShakeDetection();
+      }
+    }
+
+    function startShakeDetection() {
+      let lastX = 0, lastY = 0, lastZ = 0;
+      let lastTime = Date.now();
+
+      window.addEventListener("devicemotion", (event) => {
+        if (!permissionGranted) return;
+        const acc = event.accelerationIncludingGravity;
+        if (!acc) return;
+
+        const currentTime = Date.now();
+        if (currentTime - lastTime > 100) {
+          const deltaX = Math.abs(acc.x - lastX);
+          const deltaY = Math.abs(acc.y - lastY);
+          const deltaZ = Math.abs(acc.z - lastZ);
+
+          const shakeIntensity = deltaX + deltaY + deltaZ;
+
+          if (shakeIntensity > 25) {
+            console.log("💥 Shake detected! Intensity:", shakeIntensity.toFixed(2));
+            document.body.style.backgroundColor = "#ffaaaa";
+            showSOSCountdown(shakeIntensity);
+            setTimeout(() => document.body.style.backgroundColor = "white", 500);
+          }
+
+          lastX = acc.x;
+          lastY = acc.y;
+          lastZ = acc.z;
+          lastTime = currentTime;
+        }
+      });
+    }
+
+    function showSOSCountdown(intensity) {
+      alert(`🚨 Shake detected with intensity ${intensity.toFixed(2)}! SOS will trigger in 3 seconds.`);
+
+      const sosBtn = document.getElementById("sosButton");
+      sosBtn.style.display = "inline-block";
+      sosBtn.textContent = "🚨 Cancel SOS";
+
+      sosTimeout = setTimeout(triggerSOS, 3000);
+
+      sosBtn.onclick = () => {
+        clearTimeout(sosTimeout);
+        sosBtn.style.display = "none";
+        alert("✅ SOS cancelled.");
+      };
+    }
+
+    async function triggerSOS() {
+      document.getElementById("sosButton").style.display = "none";
+
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const { latitude, longitude } = pos.coords;
+          userLocation = `https://maps.google.com/?q=${latitude},${longitude}`;
+          sendWhatsAppMessage(userLocation);
+        }, () => {
+          sendWhatsAppMessage("Location not available");
+        });
+      } else {
+        sendWhatsAppMessage("Location not available");
+      }
+    }
+
+    function sendWhatsAppMessage(location) {
+      const message = encodeURIComponent(`🚨 EMERGENCY ALERT 🚨\n\nShake detected on user's phone!\nLocation: ${location}`);
+      window.open(`https://wa.me/${emergencyNumber}?text=${message}`, "_blank");
+    }
+
+    document.getElementById("enableMotion").addEventListener("click", requestMotionPermission);
+  </script>
 </body>
 </html>
