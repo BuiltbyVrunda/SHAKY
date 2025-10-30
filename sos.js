@@ -1,61 +1,61 @@
 // sos.js
-let latitude = null;
-let longitude = null;
+export async function sendWhatsAppSOS() {
+  console.log("📡 SOS triggered!");
 
-// 🔹 Get user location once page loads
-window.onload = () => {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        latitude = pos.coords.latitude;
-        longitude = pos.coords.longitude;
-        console.log("📍Location fetched:", latitude, longitude);
-      },
-      err => {
-        console.warn("⚠️ Location access denied or unavailable.", err);
-      }
-    );
-  } else {
-    console.warn("❌ Geolocation not supported on this device.");
+  const statusEl = document.getElementById("status");
+  statusEl.textContent = "📍 Getting location...";
+
+  // 1️⃣ Get user location
+  let location = { latitude: "Unknown", longitude: "Unknown" };
+  try {
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+      });
+    });
+    location = {
+      latitude: pos.coords.latitude,
+      longitude: pos.coords.longitude,
+    };
+    console.log("📍 Location fetched:", location);
+  } catch (err) {
+    console.warn("⚠️ Location not available:", err.message);
   }
-};
 
-// 🔹 Send SOS via WhatsApp + log it to backend
-function sendWhatsAppSOS() {
-  const emergencyMessage = `🚨 *SOS ALERT!* 🚨
-Hey! This is an emergency!
+  // 2️⃣ Create SOS message
+  const user = "User123"; // (you can make this dynamic)
+  const time = new Date().toLocaleString();
+  const message = `
+🚨 *SOS Alert!*
+User: ${user}
+Time: ${time}
+Location: https://www.google.com/maps?q=${location.latitude},${location.longitude}
+`.trim();
 
-📍 Location: https://maps.google.com/?q=${latitude},${longitude}
-📅 Time: ${new Date().toLocaleString()}
-💥 Trigger: Shake Detected`;
+  // 3️⃣ Send data to your Node server
+  try {
+    await fetch("http://localhost:3000/sos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user,
+        time: new Date().toISOString(),
+        triggeredBy: "Shake",
+        location,
+      }),
+    });
+    console.log("✅ SOS logged on server");
+  } catch (err) {
+    console.error("❌ Failed to send to server:", err);
+  }
 
-  // WhatsApp contact number (with country code, no + sign)
-  const phoneNumber = "919876543210"; // <--- replace with your actual number
+  // 4️⃣ Open WhatsApp message (this sends via WhatsApp)
+  const encodedMessage = encodeURIComponent(message);
+  const phoneNumber = "919361916131"; // Replace with your emergency number
+  const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
 
-  // ✅ open WhatsApp chat with message
-  const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(emergencyMessage)}`;
   window.open(whatsappURL, "_blank");
 
-  // ✅ also log SOS event to local server
-  fetch("http://localhost:3000/sos", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      user: "Vrunda", // or dynamically set
-      time: new Date().toISOString(),
-      intensity: "Shake Detected",
-      location: { latitude, longitude }
-    }),
-  })
-    .then(res => res.json())
-    .then(data => console.log("✅ SOS logged:", data))
-    .catch(err => console.error("❌ Error logging SOS:", err));
+  // 5️⃣ Update status
+  statusEl.textContent = "✅ SOS sent via WhatsApp!";
 }
-
-// 🔹 For manual test button
-document.addEventListener("DOMContentLoaded", () => {
-  const sosButton = document.getElementById("sosButton");
-  if (sosButton) {
-    sosButton.addEventListener("click", sendWhatsAppSOS);
-  }
-});
