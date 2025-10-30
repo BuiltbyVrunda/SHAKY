@@ -1,48 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shake SOS Detector</title>
+  <meta charset="UTF-8">
+  <title>Shake Detection SOS</title>
+  <script defer src="shake.js"></script>
+  <script defer src="sos.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
       text-align: center;
-      margin-top: 50px;
-      background-color: #f9f9f9;
-      transition: background-color 0.3s ease;
     }
+
     button {
-      padding: 15px 25px;
-      margin: 10px;
+      padding: 12px 24px;
+      margin: 12px;
       border: none;
       border-radius: 8px;
+      background: #ff4d4d;
+      color: white;
       font-size: 16px;
       cursor: pointer;
-      background-color: #007bff;
-      color: white;
-      transition: background-color 0.3s ease;
     }
+
     button:hover {
-      background-color: #0056b3;
+      background: #ff1a1a;
     }
-    #sosButton {
-      background-color: #dc3545;
+
+    h1 {
+      color: #ff6666;
     }
-    #sosButton:hover {
-      background-color: #a71d2a;
+
+    #status {
+      margin-top: 20px;
+      color: #0f0;
     }
   </style>
 </head>
 <body>
   <h1>🚨 Shake Detection SOS System</h1>
-  <button id="enableMotion">Enable Motion Sensor</button>
-  <button id="sosButton" style="display:none;">🚨 Cancel SOS</button>
+  <button id="enableMotion">Enable Motion Sensors</button>
+  <button id="sosBtn">Send SOS Now</button>
   <p id="status">Waiting for motion permission...</p>
-
-  <!-- Load the shake library first -->
-  <script src="shake.js"></script>
-  <!-- Load your SOS logic -->
-  <script src="sos.js"></script>
 </body>
 </html>
