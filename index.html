@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shake SOS Detector</title>
   <style>
@@ -38,9 +38,11 @@
   <h1>🚨 Shake Detection SOS System</h1>
   <button id="enableMotion">Enable Motion Sensor</button>
   <button id="sosButton" style="display:none;">🚨 Cancel SOS</button>
-
   <p id="status">Waiting for motion permission...</p>
 
+  <!-- Load the shake library first -->
   <script src="shake.js"></script>
+  <!-- Load your SOS logic -->
+  <script src="sos.js"></script>
 </body>
 </html>
