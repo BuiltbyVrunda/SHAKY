@@ -1,66 +1,61 @@
-const emergencyNumber = "919361916131"; // <-- Your WhatsApp number (without +)
-let motionEnabled = false;
-let shakeEvent;
-const statusText = document.getElementById("status");
+// sos.js
+let latitude = null;
+let longitude = null;
 
-document.getElementById("enableMotion").onclick = async () => {
-  try {
-    if (typeof DeviceMotionEvent.requestPermission === "function") {
-      const permission = await DeviceMotionEvent.requestPermission();
-      if (permission === "granted") {
-        motionEnabled = true;
-        startShakeDetection();
-        statusText.innerText = "✅ Motion detection enabled!";
-      } else {
-        statusText.innerText = "❌ Motion permission denied.";
-      }
-    } else {
-      motionEnabled = true;
-      startShakeDetection();
-      statusText.innerText = "✅ Motion detection active (auto)";
-    }
-  } catch (err) {
-    statusText.innerText = "Error: " + err.message;
-  }
-};
-
-function startShakeDetection() {
-  shakeEvent = new Shake({ threshold: 15, timeout: 1000 });
-  shakeEvent.start();
-
-  window.addEventListener("shake", () => {
-    if (!motionEnabled) return;
-    alert("🚨 Shake detected! Sending SOS via WhatsApp...");
-    sendWhatsAppSOS();
-  });
-}
-
-document.getElementById("sendSOS").onclick = () => {
-  sendWhatsAppSOS();
-};
-
-function sendWhatsAppSOS() {
+// 🔹 Get user location once page loads
+window.onload = () => {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const locationLink = `https://maps.google.com/?q=${latitude},${longitude}`;
-        const message = encodeURIComponent(
-          `🚨 *SOS ALERT* 🚨\n\nI'm in danger! Please help me.\nMy live location: ${locationLink}`
-        );
-        window.open(`https://wa.me/${emergencyNumber}?text=${message}`, "_blank");
+      pos => {
+        latitude = pos.coords.latitude;
+        longitude = pos.coords.longitude;
+        console.log("📍Location fetched:", latitude, longitude);
       },
-      (err) => {
-        const message = encodeURIComponent(
-          `🚨 *SOS ALERT* 🚨\n\nI'm in danger! Location not available.`
-        );
-        window.open(`https://wa.me/${emergencyNumber}?text=${message}`, "_blank");
+      err => {
+        console.warn("⚠️ Location access denied or unavailable.", err);
       }
     );
   } else {
-    const message = encodeURIComponent(
-      `🚨 *SOS ALERT* 🚨\n\nI'm in danger! (No location support)`
-    );
-    window.open(`https://wa.me/${emergencyNumber}?text=${message}`, "_blank");
+    console.warn("❌ Geolocation not supported on this device.");
   }
+};
+
+// 🔹 Send SOS via WhatsApp + log it to backend
+function sendWhatsAppSOS() {
+  const emergencyMessage = `🚨 *SOS ALERT!* 🚨
+Hey! This is an emergency!
+
+📍 Location: https://maps.google.com/?q=${latitude},${longitude}
+📅 Time: ${new Date().toLocaleString()}
+💥 Trigger: Shake Detected`;
+
+  // WhatsApp contact number (with country code, no + sign)
+  const phoneNumber = "919876543210"; // <--- replace with your actual number
+
+  // ✅ open WhatsApp chat with message
+  const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(emergencyMessage)}`;
+  window.open(whatsappURL, "_blank");
+
+  // ✅ also log SOS event to local server
+  fetch("http://localhost:3000/sos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user: "Vrunda", // or dynamically set
+      time: new Date().toISOString(),
+      intensity: "Shake Detected",
+      location: { latitude, longitude }
+    }),
+  })
+    .then(res => res.json())
+    .then(data => console.log("✅ SOS logged:", data))
+    .catch(err => console.error("❌ Error logging SOS:", err));
 }
+
+// 🔹 For manual test button
+document.addEventListener("DOMContentLoaded", () => {
+  const sosButton = document.getElementById("sosButton");
+  if (sosButton) {
+    sosButton.addEventListener("click", sendWhatsAppSOS);
+  }
+});
